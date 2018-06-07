@@ -35,7 +35,7 @@ classMethodDecl(*const create)
     if (this)
     {
         this->m.head.first = NULL;
-        this->m.head.last = this->m.head.first;
+        this->m.head.last = &this->m.head.first;
     }
     else
         delete(this);
@@ -71,21 +71,29 @@ methodDecl_(insert)
     if (idx == 0)
     {
         if ((item->next = this->m.head.first) != NULL)
-            item->next->prev = item->next;
+            item->next->prev = &item->next;
         else
-            ;
+        {
+            this->m.head.last = &item->next;
+            this->m.head.first = item;
+            item->prev = &this->m.head.first;
+        }
     }
     else if (idx == this->m.count)
     {
-        
+        item->next = NULL;
+        item->prev = this->m.head.last;
+        *this->m.head.last = item;
+        this->m.head.last = &item->next;
     }
     else
     {
         
     }
     
+    ++this->m.count;
     
-    return false;
+    return true;
 }
 
 bool

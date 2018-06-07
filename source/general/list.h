@@ -8,12 +8,12 @@ BEGIN_DECLS
 typedef struct _list_head
 {
     struct _list_item *first;
-    struct _list_item *last;
+    struct _list_item **last;
 } list_head;
 
 typedef struct _list_item
 {
-    struct _list_item *prev;
+    struct _list_item **prev;
     struct _list_item *next;
     void *ptr;
 } list_item;
