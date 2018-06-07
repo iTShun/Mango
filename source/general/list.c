@@ -25,14 +25,22 @@ initClassDecl() /* required */
 
 dtorDecl() /* required */
 {
-    
+    list.clear(this);
 }
 
 t_list
 classMethodDecl(*const create)
 {
+    t_list *const this = list.alloc();
+    if (this)
+    {
+        this->m.head.first = NULL;
+        this->m.head.last = this->m.head.first;
+    }
+    else
+        delete(this);
     
-    return NULL;
+    return this;
 }
 
 bool
@@ -45,13 +53,38 @@ bool
 methodDecl_(add)
     void *ptr __
 {
-    return false;
+    return list.insert(this, this->m.count, ptr);
 }
 
 bool
 methodDecl_(insert)
-    void *ptr __
+    size_t idx, void *ptr __
 {
+    list_item *prev, *item = NULL;
+    assert(this != NULL);
+    
+    item = BX_ALLOC(getDefaultAllocator(), sizeof(list_item));
+    assert(item != NULL);
+    
+    item->ptr = ptr;
+    
+    if (idx == 0)
+    {
+        if ((item->next = this->m.head.first) != NULL)
+            item->next->prev = item->next;
+        else
+            ;
+    }
+    else if (idx == this->m.count)
+    {
+        
+    }
+    else
+    {
+        
+    }
+    
+    
     return false;
 }
 

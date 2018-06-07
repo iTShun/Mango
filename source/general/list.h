@@ -5,25 +5,16 @@
 
 BEGIN_DECLS
 
-#ifndef TAILQ_HEAD
-#   define TAILQ_HEAD(name, type)                                       \
-struct name {                                                           \
-    struct type *tqh_first;     /* first element */                     \
-    struct type **tqh_last;     /* addr of last next element */         \
-}
-#endif
-
-#ifndef TAILQ_ENTRY
-#   define TAILQ_ENTRY(type)                                            \
-struct {                                                                \
-    struct type *tqe_next;      /* next element */                      \
-    struct type **tqe_prev;     /* address of previous next element */  \
-}
-#endif
+typedef struct _list_head
+{
+    struct _list_item *first;
+    struct _list_item *last;
+} list_head;
 
 typedef struct _list_item
 {
-    TAILQ_ENTRY(_list_item) np;
+    struct _list_item *prev;
+    struct _list_item *next;
     void *ptr;
 } list_item;
 
@@ -33,7 +24,8 @@ typedef struct _list_item
 /* Object interface */
 BASEOBJECT_INTERFACE
 
-TAILQ_HEAD(_list_head, _list_item) private(head);
+
+list_head private(head);
 size_t private(count);
 
 BASEOBJECT_METHODS
@@ -45,14 +37,14 @@ CLASS_INTERFACE
 
 t_list *const classMethod(create);
 bool method(clear);
-bool method_(add) void *ptr __;
-bool method_(insert) void *ptr __;
-bool method_(del) void *ptr __;
-bool method_(delWithIndex) size_t idx, void *ptr __;
-void* method_(get) size_t idx __;
+bool method_(add) void *_ptr __;
+bool method_(insert) size_t _idx, void *_ptr __;
+bool method_(del) void *_ptr __;
+bool method_(delWithIndex) size_t _idx, void *_ptr __;
+void* method_(get) size_t _idx __;
 size_t method(count);
-void* method_(first) void **it __;
-void* method_(next) void **it __;
+void* method_(first) void **_it __;
+void* method_(next) void **_it __;
 
 ENDOF_INTERFACE
 
