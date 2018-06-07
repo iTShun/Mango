@@ -17,6 +17,7 @@
 #   include <malloc.h>
 #elif BX_CRT_MSVC
 #   include <malloc.h>
+#	define alloca _alloca
 #endif
 
 #include <stdio.h>
@@ -45,11 +46,11 @@ BEGIN_DECLS
 #define BX_ALLOC(_allocator, _size)                         allocator.allocate(_allocator, _size, 0, _FILE_LINE_)
 #define BX_REALLOC(_allocator, _ptr, _size)                 allocator.realloc(_allocator, _ptr, _size, 0, _FILE_LINE_)
 #define BX_FREE(_allocator, _ptr)                           allocator.free(_allocator, _ptr, 0, _FILE_LINE_)
-#define BX_SAFEFREE(_allocator, _ptr)                       allocator.free(_allocator, _ptr, 0, _FILE_LINE_); _ptr = NULL
+#define BX_SAFEFREE(_allocator, _ptr)                       if (_ptr) { allocator.free(_allocator, _ptr, 0, _FILE_LINE_); _ptr = NULL; }
 #define BX_ALIGNED_ALLOC(_allocator, _size, _align)         allocator.allocate(_allocator, _size, _align, _FILE_LINE_)
 #define BX_ALIGNED_REALLOC(_allocator, _ptr, _size, _align) allocator.realloc(_allocator, _ptr, _size, _align, _FILE_LINE_)
 #define BX_ALIGNED_FREE(_allocator, _ptr, _align)           allocator.free(_allocator, _ptr, _align, _FILE_LINE_)
-#define BX_ALIGNED_SAFEFREE(_allocator, _ptr, _align)       allocator.free(_allocator, _ptr, _align, _FILE_LINE_); _ptr = NULL
+#define BX_ALIGNED_SAFEFREE(_allocator, _ptr, _align)       if (_ptr) { allocator.free(_allocator, _ptr, _align, _FILE_LINE_); _ptr = NULL; }
 
 
 #ifndef BX_CONFIG_ALLOCATOR_NATURAL_ALIGNMENT

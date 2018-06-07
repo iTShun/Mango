@@ -36,6 +36,7 @@ classMethodDecl(*const create)
     {
         this->m.head.first = NULL;
         this->m.head.last = &this->m.head.first;
+		this->m.count = 0;
     }
     else
         delete(this);
@@ -46,7 +47,23 @@ classMethodDecl(*const create)
 bool
 methodDecl(clear)
 {
-    return false;
+	assert(this != NULL);
+
+	list_item *item = NULL;
+
+	while ((item = this->m.head.first) != NULL )
+	{
+		if (item->next != NULL)
+			item->next->prev = item->prev;
+		else
+			this->m.head.last = item->prev;
+		*item->prev = item->next;
+
+		--this->m.count;
+		BX_SAFEFREE(getDefaultAllocator(), item);
+	}
+
+    return (this->m.count == 0);
 }
 
 bool
@@ -88,7 +105,16 @@ methodDecl_(insert)
     }
     else
     {
-        
+		for (prev = this->m.head.first; prev != NULL; prev = prev->next)
+		{
+			if (idx-- == 0)
+				break;
+		}
+
+		item->prev = prev->prev;
+		item->next = prev;
+		*prev->prev = item;
+		prev->prev = &item->next;
     }
     
     ++this->m.count;
@@ -97,23 +123,75 @@ methodDecl_(insert)
 }
 
 bool
-methodDecl_(del)
+methodDecl_(remove)
     void *ptr __
 {
+	assert(this != NULL);
+
+	for (list_item *item = this->m.head.first; item != NULL; item = item->next)
+	{
+		if (item->ptr == ptr)
+		{
+			if (item->next != NULL)
+				item->next->prev = item->prev;
+			else
+				this->m.head.last = item->prev;
+			*item->prev = item->next;
+
+			--this->m.count;
+			BX_SAFEFREE(getDefaultAllocator(), item);
+			return true;
+		}
+	}
+
     return false;
 }
 
 bool
-methodDecl_(delWithIndex)
-    size_t idx, void *ptr __
+methodDecl_(removeWithIndex)
+    size_t idx, void **pptr __
 {
-    return false;
+	assert(this != NULL);
+	assert(idx < this->m.count);
+
+	list_item *item = NULL;
+
+	for (item = this->m.head.first; item != NULL; item = item->next)
+	{
+		if (idx-- == 0)
+			break;
+	}
+
+	if (item == NULL) return false;
+
+	if (pptr)
+		*pptr = item->ptr;
+
+	if (item->next != NULL)
+		item->next->prev = item->prev;
+	else
+		this->m.head.last = item->prev;
+	*item->prev = item->next;
+
+	--this->m.count;
+	BX_SAFEFREE(getDefaultAllocator(), item);
+
+    return true;
 }
 
 void
 methodDecl_(*const get)
     size_t idx __
 {
+	assert(this != NULL);
+	assert(idx < this->m.count);
+
+	for (list_item *item = this->m.head.first; item != NULL; item = item->next)
+	{
+		if (idx-- == 0)
+			return item->ptr;
+	}
+
     return NULL;
 }
 
@@ -127,12 +205,39 @@ void
 methodDecl_(*const first)
     void **it __
 {
+	assert(this != NULL);
+
+	list_item *item = this->m.head.first;
+
+	if (it && item)
+		*it = item->next;
+	else if (it)
+		*it = NULL;
+
+	if (item)
+		return item->ptr;
+
     return NULL;
 }
+
 void
 methodDecl_(*const next)
     void **it __
 {
+	assert(this != NULL);
+	assert(it != NULL);
+	assert(*it != NULL);
+
+	list_item *item = *it;
+
+	if (it && item)
+		*it = item->next;
+	else if (it)
+		*it = NULL;
+
+	if (item)
+		return item->ptr;
+
     return NULL;
 }
 
@@ -142,8 +247,8 @@ methodName(create),
 methodName(clear),
 methodName(add),
 methodName(insert),
-methodName(del),
-methodName(delWithIndex),
+methodName(remove),
+methodName(removeWithIndex),
 methodName(get),
 methodName(count),
 methodName(first),

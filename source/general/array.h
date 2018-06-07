@@ -8,6 +8,11 @@ BEGIN_DECLS
 #define ARRAY_MAX_SIZE      512
 #define ARRAY_RESIZE_PAD    100
 
+#define ARRAY_FOREACH(_item, _array) \
+	for (int32_t _item = 0; _item < array.size(_array); ++_item)	
+		
+	
+
 typedef enum
 {
     ARRAY_TYPE_NONE = 0,
@@ -47,6 +52,7 @@ t_array* const classMethod_(create)
     array_type _type, size_t _size __;
 bool method_(resize)
     size_t _size __;
+size_t method(size);
 
 bool method_(setBool)
     size_t idx, bool v __;

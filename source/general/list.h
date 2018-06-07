@@ -18,14 +18,16 @@ typedef struct _list_item
     void *ptr;
 } list_item;
 
+#define LIST_FOREACH(item, list) \
+	for (list_item *item = list->m.head.first; item != NULL; item = item->next)
+
 #undef  OBJECT
 #define OBJECT list
 
 /* Object interface */
 BASEOBJECT_INTERFACE
 
-
-list_head private(head);
+list_head head;
 size_t private(count);
 
 BASEOBJECT_METHODS
@@ -39,8 +41,8 @@ t_list *const classMethod(create);
 bool method(clear);
 bool method_(add) void *_ptr __;
 bool method_(insert) size_t _idx, void *_ptr __;
-bool method_(del) void *_ptr __;
-bool method_(delWithIndex) size_t _idx, void *_ptr __;
+bool method_(remove) void *_ptr __;
+bool method_(removeWithIndex) size_t _idx, void **_pptr __;
 void* method_(get) size_t _idx __;
 size_t method(count);
 void* method_(first) void **_it __;

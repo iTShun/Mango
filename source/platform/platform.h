@@ -396,4 +396,25 @@ BX_STRINGIZE(BX_PLATFORM_NACL)
 #    define BX_ARCH_NAME "64-bit"
 #endif // BX_ARCH_
 
+#ifndef NULL
+#  ifdef __cplusplus
+#  define NULL        (0L)
+#  else /* !__cplusplus */
+#  define NULL        ((void*) 0)
+#  endif /* !__cplusplus */
+#endif
+
+#undef	MAX
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+
+#undef	MIN
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+
+#undef	ABS
+#define ABS(a)	   (((a) < 0) ? -(a) : (a))
+
+#undef	CLAMP
+#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
+
 #endif /* platform_h */

@@ -114,6 +114,12 @@ methodDecl_(resize)
     return false;
 }
 
+size_t 
+methodDecl(size)
+{
+	return this->m.size;
+}
+
 #define ARRAY_GETSET_F(pfx, dtype, ctype)    \
 bool methodDecl_(set##pfx) size_t idx, ctype v __                   \
 {                                                                   \
@@ -210,6 +216,7 @@ CLASS_IMPLEMENTATION
 
 methodName(create),
 methodName(resize),
+methodName(size),
 methodName(setBool),
 methodName(getBool),
 methodName(setChar),
