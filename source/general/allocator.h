@@ -54,7 +54,7 @@ BEGIN_DECLS
 #define BX_ALIGNED_REALLOC(_allocator, _ptr, _size, _align) allocator.realloc(_allocator, _ptr, _size, _align, _FILE_LINE_)
 #define BX_ALIGNED_FREE(_allocator, _ptr, _align)           allocator.free(_allocator, _ptr, _align, _FILE_LINE_)
 #define BX_ALIGNED_SAFEFREE(_allocator, _ptr, _align)       if (_ptr) { allocator.free(_allocator, _ptr, _align, _FILE_LINE_); _ptr = NULL; }
-
+#define BX_SAFECLASS(_ptr)									if (_ptr) { delete(_ptr); _ptr = NULL; }
 
 #ifndef BX_CONFIG_ALLOCATOR_NATURAL_ALIGNMENT
 #    define BX_CONFIG_ALLOCATOR_NATURAL_ALIGNMENT 8

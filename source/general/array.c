@@ -58,7 +58,7 @@ t_array
 classMethodDecl_(*const create)
     array_type _type, size_t _size __
 {
-    t_array *const this = array.alloc();
+    t_array *this = array.alloc();
     if (this)
     {
         assert(ARRAY_TYPE_IS_VALID(_type));
@@ -79,7 +79,7 @@ classMethodDecl_(*const create)
         assert(this->m.base != NULL);
     }
     else
-        delete(this);
+        BX_SAFECLASS(this);
         
     return this;
 }

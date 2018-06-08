@@ -107,7 +107,7 @@ dtorDecl() /* required */
 t_hash
 classMethodDecl(*const create)
 {
-	t_hash *const this = hash.alloc();
+	t_hash *this = hash.alloc();
 	if (this)
 	{
         this->m.nnodes = 0;
@@ -119,7 +119,7 @@ classMethodDecl(*const create)
 		this->m.hashes = BX_ALLOC(getDefaultAllocator(), sizeof(uint32_t) * this->m.size);
 	}
 	else
-		delete(this);
+		BX_SAFECLASS(this);
 
 	return this;
 }

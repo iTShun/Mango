@@ -31,7 +31,7 @@ dtorDecl() /* required */
 t_list
 classMethodDecl(*const create)
 {
-    t_list *const this = list.alloc();
+    t_list *this = list.alloc();
     if (this)
     {
         this->m.head.first = NULL;
@@ -39,7 +39,7 @@ classMethodDecl(*const create)
 		this->m.count = 0;
     }
     else
-        delete(this);
+		BX_SAFECLASS(this);
     
     return this;
 }
