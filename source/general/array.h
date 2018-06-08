@@ -8,10 +8,8 @@ BEGIN_DECLS
 #define ARRAY_MAX_SIZE      512
 #define ARRAY_RESIZE_PAD    100
 
-#define ARRAY_FOREACH(_item, _array) \
-	for (int32_t _item = 0; _item < array.size(_array); ++_item)	
-		
-	
+#define ARRAY_FOREACH(_index, _array) \
+	for (int32_t _index = 0; _index < array.size(_array); ++_index)
 
 typedef enum
 {

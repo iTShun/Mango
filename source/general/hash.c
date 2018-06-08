@@ -8,7 +8,6 @@
 #define TOMBSTONE_HASH_VALUE 1
 #define HASH_IS_UNUSED(h_) ((h_) == UNUSED_HASH_VALUE)
 #define HASH_IS_TOMBSTONE(h_) ((h_) == TOMBSTONE_HASH_VALUE)
-#define HASH_IS_REAL(h_) ((h_) >= 2)
 
 /* Each table size has an associated prime modulo (the first prime
 * lower than the table size) used to find the initial bucket. Probing
@@ -51,16 +50,6 @@ static const int32_t prime_mod[] =
 	2147483647  /* For 1 << 31 */
 };
 
-typedef struct
-{
-	t_hash		*hash_table;
-	void*		dummy1;
-	void*		dummy2;
-	int32_t     position;
-	bool		dummy3;
-	int32_t     dummy4;
-} RealIter;
-
 /* Hash Functions
 */
 static bool g_str_equal(const void* v1, const void* v2);
@@ -68,6 +57,26 @@ static bool g_str_equal(const void* v1, const void* v2);
 static uint32_t g_str_hash(const void* v);
 
 static void g_hash_table_set_shift(t_hash *hash_table, int32_t shift);
+
+static int32_t g_hash_table_find_closest_shift (int32_t n);
+
+static void g_hash_table_set_shift_from_size(t_hash *hash_table, int32_t size);
+
+static bool g_hash_table_insert_internal(t_hash *hash_table, void* key, void* value, bool keep_new_key);
+
+static bool g_hash_table_insert_node(t_hash *hash_table, uint32_t node_index, uint32_t key_hash, void* new_key, void* new_value, bool keep_new_key, bool reusing_key);
+
+static uint32_t g_hash_table_lookup_node(t_hash *hash_table, const void* key, uint32_t *hash_return);
+
+static void g_hash_table_maybe_resize(t_hash *hash_table);
+
+static void g_hash_table_resize(t_hash *hash_table);
+
+static bool g_hash_table_remove_internal(t_hash *hash_table, const void* key);
+
+static void g_hash_table_remove_node(t_hash *hash_table, int32_t i);
+
+static void g_hash_table_remove_all_nodes(t_hash *hash_table, bool destruction);
 
 /*
  ---------------------
@@ -101,10 +110,10 @@ classMethodDecl(*const create)
 	t_hash *const this = hash.alloc();
 	if (this)
 	{
-		memSet(this, 0, sizeof(t_hash));
-
+        this->m.nnodes = 0;
+        this->m.noccupied = 0;
 		g_hash_table_set_shift(this, HASH_TABLE_MIN_SHIFT);
-
+        
 		this->m.keys = BX_ALLOC(getDefaultAllocator(), sizeof(void*) * this->m.size);
 		this->m.values = this->m.keys;
 		this->m.hashes = BX_ALLOC(getDefaultAllocator(), sizeof(uint32_t) * this->m.size);
@@ -136,87 +145,37 @@ bool
 methodDecl_(insert)
 	void *key, void *value __
 {
-	return g_hash_table_insert_internal(this, key, value, false);
+    return g_hash_table_insert_internal(this, key, value, false);
 }
 
 bool
 methodDecl_(replace)
 	void *key, void *value __
 {
-	return g_hash_table_insert_internal(this, key, value, true);
+    return g_hash_table_insert_internal(this, key, value, true);
 }
 
 bool 
 methodDecl_(add)
 	void *key __
 {
-	return g_hash_table_insert_internal(this, key, key, true);
+    return g_hash_table_insert_internal(this, key, key, true);;
 }
 
 bool
 methodDecl_(remove)
 	void *key __
 {
-	return g_hash_table_remove_internal(this, key, true);
+    return g_hash_table_remove_internal(this, key);
 }
 
-bool 
+void
 methodDecl(removeAll)
 {
 	assert(this != NULL);
 
-	g_hash_table_remove_all_nodes(this, true, false);
-	g_hash_table_maybe_resize(this);
-
-	return true;
-}
-
-bool
-methodDecl_(steal)
-	void *key __
-{
-	return g_hash_table_remove_internal(this, key, false);
-}
-
-bool 
-methodDecl_(stealExtended)
-	const void *lookup_key, void **stolen_key, void **stolen_value __
-{
-	uint32_t node_index;
-	uint32_t node_hash;
-
-	assert(this != NULL);
-
-	node_index = g_hash_table_lookup_node(this, lookup_key, &node_hash);
-
-	if (!HASH_IS_REAL(this->m.hashes[node_index]))
-	{
-		if (stolen_key != NULL)
-			*stolen_key = NULL;
-		if (stolen_value != NULL)
-			*stolen_value = NULL;
-		return false;
-	}
-
-	if (stolen_key != NULL)
-		*stolen_key = &this->m.keys[node_index];
-
-	if (stolen_value != NULL)
-		*stolen_value = &this->m.values[node_index];
-
-	g_hash_table_remove_node(this, node_index, false);
-	g_hash_table_maybe_resize(this);
-
-	return true;
-}
-
-void 
-methodDecl(stealAll)
-{
-	assert(this != NULL);
-
-	g_hash_table_remove_all_nodes(this, false, false);
-	g_hash_table_maybe_resize(this);
+    g_hash_table_remove_all_nodes(this, false);
+    g_hash_table_maybe_resize(this);
 }
 
 void
@@ -272,32 +231,12 @@ methodDecl_(contains)
 	return HASH_IS_REAL(this->m.hashes[node_index]);
 }
 
-void
-methodDecl_(*const find)
-	HRFunc predicate, void *user_data __
+uint32_t
+methodDecl(capacity)
 {
-	int32_t i;
-	bool match;
-
-	assert(this != NULL);
-	assert(predicate != NULL);
-
-	match = false;
-
-	for (i = 0; i < this->m.size; i++)
-	{
-		uint32_t node_hash = this->m.hashes[i];
-		void* node_key = this->m.keys[i];
-		void* node_value = this->m.values[i];
-
-		if (HASH_IS_REAL(node_hash))
-			match = predicate(node_key, node_value, user_data);
-
-		if (match)
-			return node_value;
-	}
-
-	return NULL;
+    assert(this != NULL);
+    
+    return this->m.size;
 }
 
 uint32_t 
@@ -382,6 +321,7 @@ methodName(removeAll),
 methodName(lookup),
 methodName(lookupExtended),
 methodName(contains),
+methodName(capacity),
 methodName(size),
 methodName(getKeys),
 methodName(getValues),
@@ -424,4 +364,307 @@ static void g_hash_table_set_shift(t_hash *hash_table, int32_t shift)
 	}
 
 	hash_table->m.mask = mask;
+}
+
+static int32_t g_hash_table_find_closest_shift (int32_t n)
+{
+    int32_t i;
+    
+    for (i = 0; n; i++)
+        n >>= 1;
+    
+    return i;
+}
+
+static void g_hash_table_set_shift_from_size(t_hash *hash_table, int32_t size)
+{
+    int32_t shift;
+    
+    shift = g_hash_table_find_closest_shift (size);
+    shift = MAX(shift, HASH_TABLE_MIN_SHIFT);
+    
+    g_hash_table_set_shift (hash_table, shift);
+}
+
+static bool g_hash_table_insert_internal(t_hash *hash_table, void* key, void* value, bool keep_new_key)
+{
+    uint32_t key_hash;
+    uint32_t node_index;
+    
+    assert (hash_table != NULL);
+    
+    node_index = g_hash_table_lookup_node(hash_table, key, &key_hash);
+    
+    return g_hash_table_insert_node(hash_table, node_index, key_hash, key, value, keep_new_key, false);
+}
+
+static bool g_hash_table_insert_node(t_hash *hash_table, uint32_t node_index, uint32_t key_hash, void* new_key, void* new_value, bool keep_new_key, bool reusing_key)
+{
+    bool already_exists;
+    uint32_t old_hash;
+    
+    old_hash = hash_table->m.hashes[node_index];
+    already_exists = HASH_IS_REAL (old_hash);
+    
+    /* Proceed in three steps.  First, deal with the key because it is the
+     * most complicated.  Then consider if we need to split the table in
+     * two (because writing the value will result in the set invariant
+     * becoming broken).  Then deal with the value.
+     *
+     * There are three cases for the key:
+     *
+     *  - entry already exists in table, reusing key:
+     *    free the just-passed-in new_key and use the existing value
+     *
+     *  - entry already exists in table, not reusing key:
+     *    free the entry in the table, use the new key
+     *
+     *  - entry not already in table:
+     *    use the new key, free nothing
+     *
+     * We update the hash at the same time...
+     */
+    if (already_exists)
+    {
+        if (keep_new_key)
+        {
+            hash_table->m.keys[node_index] = new_key;
+        }
+    }
+    else
+    {
+        hash_table->m.hashes[node_index] = key_hash;
+        hash_table->m.keys[node_index] = new_key;
+    }
+    
+    /* Step two: check if the value that we are about to write to the
+     * table is the same as the key in the same position.  If it's not,
+     * split the table.
+     */
+    if (hash_table->m.keys == hash_table->m.values && hash_table->m.keys[node_index] != new_value)
+    {
+        uint32_t sz = sizeof (void*) * hash_table->m.size;
+        hash_table->m.values = BX_ALLOC(getDefaultAllocator(), sz);
+        memCopy(hash_table->m.values, hash_table->m.keys, sz);
+    }
+    
+    /* Step 3: Actually do the write */
+    hash_table->m.values[node_index] = new_value;
+    
+    /* Now, the bookkeeping... */
+    if (!already_exists)
+    {
+        hash_table->m.nnodes++;
+        
+        if (HASH_IS_UNUSED (old_hash))
+        {
+            /* We replaced an empty node, and not a tombstone */
+            hash_table->m.noccupied++;
+            g_hash_table_maybe_resize(hash_table);
+        }
+    }
+    
+    return !already_exists;
+}
+
+static inline uint32_t g_hash_table_lookup_node(t_hash *hash_table, const void* key, uint32_t *hash_return)
+{
+    uint32_t node_index;
+    uint32_t node_hash;
+    uint32_t hash_value;
+    uint32_t first_tombstone = 0;
+    bool have_tombstone = false;
+    uint32_t step = 0;
+    
+    hash_value = g_str_hash (key);
+    if (!HASH_IS_REAL (hash_value))
+        hash_value = 2;
+    
+    *hash_return = hash_value;
+    
+    node_index = hash_value % hash_table->m.mod;
+    node_hash = hash_table->m.hashes[node_index];
+    
+    while (!HASH_IS_UNUSED (node_hash))
+    {
+        /* We first check if our full hash values
+         * are equal so we can avoid calling the full-blown
+         * key equality function in most cases.
+         */
+        if (node_hash == hash_value)
+        {
+            void* node_key = hash_table->m.keys[node_index];
+            
+            if (g_str_equal(node_key, key))
+                return node_index;
+        }
+        else if (HASH_IS_TOMBSTONE (node_hash) && !have_tombstone)
+        {
+            first_tombstone = node_index;
+            have_tombstone = true;
+        }
+        
+        step++;
+        node_index += step;
+        node_index &= hash_table->m.mask;
+        node_hash = hash_table->m.hashes[node_index];
+    }
+    
+    if (have_tombstone)
+        return first_tombstone;
+    
+    return node_index;
+}
+
+static inline void g_hash_table_maybe_resize(t_hash *hash_table)
+{
+    int32_t noccupied = hash_table->m.noccupied;
+    int32_t size = hash_table->m.size;
+    
+    if ((size > hash_table->m.nnodes * 4 && size > 1 << HASH_TABLE_MIN_SHIFT) ||
+        (size <= noccupied + (noccupied / 16)))
+        g_hash_table_resize(hash_table);
+}
+
+static void g_hash_table_resize(t_hash *hash_table)
+{
+    void** new_keys;
+    void** new_values;
+    uint32_t *new_hashes;
+    int32_t old_size;
+    int32_t i;
+    
+    old_size = hash_table->m.size;
+    g_hash_table_set_shift_from_size(hash_table, hash_table->m.nnodes * 2);
+    
+    new_keys = BX_ALLOC(getDefaultAllocator(), sizeof(void*) * hash_table->m.size);
+    if (hash_table->m.keys == hash_table->m.values)
+        new_values = new_keys;
+    else
+        new_values = BX_ALLOC(getDefaultAllocator(), sizeof(void*) * hash_table->m.size);
+    new_hashes = BX_ALLOC(getDefaultAllocator(), sizeof(uint32_t) * hash_table->m.size);
+    
+    for (i = 0; i < old_size; i++)
+    {
+        uint32_t node_hash = hash_table->m.hashes[i];
+        uint32_t hash_val;
+        uint32_t step = 0;
+        
+        if (!HASH_IS_REAL(node_hash))
+            continue;
+        
+        hash_val = node_hash % hash_table->m.mod;
+        
+        while (!HASH_IS_UNUSED (new_hashes[hash_val]))
+        {
+            step++;
+            hash_val += step;
+            hash_val &= hash_table->m.mask;
+        }
+        
+        new_hashes[hash_val] = hash_table->m.hashes[i];
+        new_keys[hash_val] = hash_table->m.keys[i];
+        new_values[hash_val] = hash_table->m.values[i];
+    }
+    
+    if (hash_table->m.keys != hash_table->m.values)
+        BX_SAFEFREE(getDefaultAllocator(), hash_table->m.values);
+    
+    BX_SAFEFREE(getDefaultAllocator(), hash_table->m.keys);
+    BX_SAFEFREE(getDefaultAllocator(), hash_table->m.hashes);
+    
+    hash_table->m.keys = new_keys;
+    hash_table->m.values = new_values;
+    hash_table->m.hashes = new_hashes;
+    
+    hash_table->m.noccupied = hash_table->m.nnodes;
+}
+
+static bool g_hash_table_remove_internal(t_hash *hash_table, const void* key)
+{
+    uint32_t node_index;
+    uint32_t node_hash;
+    
+    assert(hash_table != NULL);
+    
+    node_index = g_hash_table_lookup_node(hash_table, key, &node_hash);
+    
+    if (!HASH_IS_REAL(hash_table->m.hashes[node_index]))
+        return false;
+    
+    g_hash_table_remove_node(hash_table, node_index);
+    g_hash_table_maybe_resize(hash_table);
+    
+    return true;
+}
+
+static void g_hash_table_remove_node(t_hash *hash_table, int32_t i)
+{
+    void* key;
+    void* value;
+    
+    key = hash_table->m.keys[i];
+    value = hash_table->m.values[i];
+    
+    /* Erect tombstone */
+    hash_table->m.hashes[i] = TOMBSTONE_HASH_VALUE;
+    
+    /* Be GC friendly */
+    hash_table->m.keys[i] = NULL;
+    hash_table->m.values[i] = NULL;
+    
+    hash_table->m.nnodes--;
+}
+
+static void g_hash_table_remove_all_nodes(t_hash *hash_table, bool destruction)
+{
+    int32_t i;
+    void* key;
+    void* value;
+    int32_t old_size;
+    void** old_keys;
+    void** old_values;
+    uint32_t *old_hashes;
+    
+    key = value = old_keys = old_values = old_hashes = NULL;
+    
+    /* If the hash table is already empty, there is nothing to be done. */
+    if (hash_table->m.nnodes == 0)
+        return;
+    
+    hash_table->m.nnodes = 0;
+    hash_table->m.noccupied = 0;
+    
+    /* Keep the old storage space around to iterate over it. */
+    old_size = hash_table->m.size;
+    old_keys   = hash_table->m.keys;
+    old_values = hash_table->m.values;
+    old_hashes = hash_table->m.hashes;
+    
+    /* Now create a new storage space; If the table is destroyed we can use the
+     * shortcut of not creating a new storage. This saves the allocation at the
+     * cost of not allowing any recursive access.
+     * However, the application doesn't own any reference anymore, so access
+     * is not allowed. If accesses are done, then either an assert or crash
+     * *will* happen. */
+    g_hash_table_set_shift(hash_table, HASH_TABLE_MIN_SHIFT);
+    if (!destruction)
+    {
+        hash_table->m.keys   = BX_ALLOC(getDefaultAllocator(), sizeof(void*) * hash_table->m.size);
+        hash_table->m.values = hash_table->m.keys;
+        hash_table->m.hashes = BX_ALLOC(getDefaultAllocator(), sizeof(uint32_t) * hash_table->m.size);
+    }
+    else
+    {
+        hash_table->m.keys   = NULL;
+        hash_table->m.values = NULL;
+        hash_table->m.hashes = NULL;
+    }
+    
+    /* Destroy old storage space. */
+    if (old_keys != old_values)
+        BX_SAFEFREE(getDefaultAllocator(), old_values);
+    
+    BX_SAFEFREE(getDefaultAllocator(), old_keys);
+    BX_SAFEFREE(getDefaultAllocator(), old_hashes);
 }

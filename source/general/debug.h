@@ -5,6 +5,13 @@
 
 BEGIN_DECLS
 
+#define check(_condition, _format, ...)  \
+    if (!(_condition))                          \
+    {                                           \
+        debug_printf("Assert {" __FILE__ "(" STRINGIZE(__LINE__) ")}: " _format "\n", ##__VA_ARGS__); \
+        debug_break();                          \
+    }
+
 void debug_break();
 
 void debug_output(const char* _out);

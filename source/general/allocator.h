@@ -37,6 +37,9 @@ BEGIN_DECLS
 #define BX_ALIGN_256(_value) BX_ALIGN_MASK(_value, 0xff)
 #define BX_ALIGN_4096(_value) BX_ALIGN_MASK(_value, 0xfff)
 
+#define STRINGIZE(_x) STRINGIZE_(_x)
+#define STRINGIZE_(_x) #_x
+
 #if defined(DEBUG) || defined(_DEBUG)
 #   define _FILE_LINE_      __FILE__, __LINE__
 #else

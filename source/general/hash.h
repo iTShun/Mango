@@ -6,10 +6,13 @@
 
 BEGIN_DECLS
 
-typedef bool(*EqualFunc)(const void* a, const void* b);
-typedef void(*DestroyNotify)(void* data);
-typedef uint32_t(*HashFunc)(const void* key);
-typedef bool(*HRFunc)(void* key, void* value, void* user_data);
+#define HASH_IS_REAL(h_) ((h_) >= 2)
+#define HASH_FOREACH(_key, _value, hash_table)  \
+for (int32_t i = 0; i < hash.capacity(hash_table); i++) \
+{                                                       \
+    uint32_t node_hash = hash_table->m.hashes[i];       \
+    void* _key = hash_table->m.keys[i];                 \
+    void* _value = hash_table->m.values[i];
 
 #undef  OBJECT
 #define OBJECT hash
@@ -44,13 +47,14 @@ bool method_(add)
 	void *_key __;
 bool method_(remove)
 	void *_key __;
-bool method(removeAll);
+void method(removeAll);
 void* method_(lookup)
 	const void *_key __;
 bool method_(lookupExtended)
 	const void *_lookup_key, void **_orig_key, void **_value __;
 bool method_(contains)
 	const void *_key __;
+uint32_t method(capacity);
 uint32_t method(size);
 t_list* method(getKeys);
 t_list* method(getValues);
