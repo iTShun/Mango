@@ -396,6 +396,19 @@ BX_STRINGIZE(BX_PLATFORM_NACL)
 #    define BX_ARCH_NAME "64-bit"
 #endif // BX_ARCH_
 
+#ifndef BX_CONFIG_SUPPORTS_THREADING
+#	define BX_CONFIG_SUPPORTS_THREADING !(0 \
+			|| BX_PLATFORM_EMSCRIPTEN       \
+			|| BX_CRT_NONE                  \
+			)
+#endif // BX_CONFIG_SUPPORTS_THREADING
+
+#if BX_COMPILER_GCC || BX_COMPILER_CLANG
+#	define BX_ALIGN_DECL(_align, _decl) _decl __attribute__( (aligned(_align) ) )
+#elif BX_COMPILER_MSVC
+#	define BX_ALIGN_DECL(_align, _decl) __declspec(align(_align) ) _decl
+#endif
+
 #ifndef NULL
 #  ifdef __cplusplus
 #  define NULL        (0L)
