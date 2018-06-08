@@ -1,17 +1,9 @@
 #ifndef ref_h
 #define ref_h
 
-#include "platform/platform.h"
-#include "oopc/ooc.h"
-#include "debug.h"
-#include <stdint.h>
-#include <stdbool.h>
+#include "general/debug.h"
 
 BEGIN_DECLS
-
-#define safe_free(p) if (p) { free(p); p = NULL; }
-#define safe_delete(obj) if (obj) { delete(obj); obj = NULL; }
-#define safe_release(obj) if (obj && ref.release(obj)) { obj = NULL; }
 
 #undef  OBJECT
 #define OBJECT ref

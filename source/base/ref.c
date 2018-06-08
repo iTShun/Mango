@@ -26,15 +26,14 @@ ENDOF_IMPLEMENTATION
  */
 initClassDecl() /* required */
 {
-    debug_printf("ref initClassDecl");
+    
 }
 
 dtorDecl() /* required */
 {
-    safe_free(this->m.name);
+    free(this->m.name);
+	this->m.name = NULL;
     this->m.ref_count = 0;
-    
-    debug_printf("ref dtorDecl");
 }
 
 t_ref
