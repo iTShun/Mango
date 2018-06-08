@@ -11,6 +11,7 @@
 #if BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
 #    include <windows.h>
 #    include <psapi.h>
+#	 pragma comment(lib, "psapi.lib")
 #elif  BX_PLATFORM_ANDROID \
 || BX_PLATFORM_EMSCRIPTEN \
 || BX_PLATFORM_BSD \
@@ -404,7 +405,7 @@ void* os_exec(const char* const* _argv)
     int32_t total = 0;
     for (uint32_t ii = 0; NULL != _argv[ii]; ++ii)
     {
-        total += (int32_t)strLen(_argv[ii]) + 1;
+        total += (int32_t)strLen(_argv[ii], INT32_MAX) + 1;
     }
     
     char* temp = (char*)alloca(total);

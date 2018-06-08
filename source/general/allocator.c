@@ -91,6 +91,7 @@ void
 methodDecl_(*const realloc)
     void* _ptr, size_t _size, size_t _align, const char* _file, uint32_t _line __
 {
+	void* result = NULL;
     if (_size == 0)
     {
         if (_ptr != NULL)
@@ -113,26 +114,36 @@ methodDecl_(*const realloc)
     {
         if (_align <= BX_CONFIG_ALLOCATOR_NATURAL_ALIGNMENT)
         {
-            return malloc(_size);
+			result = malloc(_size);
+			memSet(result, 0, _size);
+			return result;
         }
         
 #    if BX_COMPILER_MSVC
-        return _aligned_malloc(_size, _align);
+		result = _aligned_malloc(_size, _align);
+		memSet(result, 0, _size);
+		return result;
 #    else
-        return allocator.alignedAlloc(this, _size, _align, _file, _line);
+		result = allocator.alignedAlloc(this, _size, _align, _file, _line);
+		memSet(result, 0, _size);
+		return result;
 #    endif
     }
     
     if (BX_CONFIG_ALLOCATOR_NATURAL_ALIGNMENT >= _align)
     {
-        return realloc(_ptr, _size);
+		result = realloc(_ptr, _size);
+		memSet(result, 0, _size);
+		return result;
     }
     
 #    if BX_COMPILER_MSVC
-    return _aligned_realloc(_ptr, _size, _align);
+	result = _aligned_realloc(_ptr, _size, _align);
 #    else
-    return allocator.alignedRealloc(this, _ptr, _size, _align, _file, _line);
+	result = allocator.alignedRealloc(this, _ptr, _size, _align, _file, _line);
 #    endif
+	memSet(result, 0, _size);
+	return result;
 }
 
 void

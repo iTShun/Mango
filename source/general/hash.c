@@ -117,9 +117,6 @@ classMethodDecl(*const create)
 		this->m.keys = BX_ALLOC(getDefaultAllocator(), sizeof(void*) * this->m.size);
 		this->m.values = this->m.keys;
 		this->m.hashes = BX_ALLOC(getDefaultAllocator(), sizeof(uint32_t) * this->m.size);
-
-		memSet(this->m.keys, 0, sizeof(void*) * this->m.size);
-		memSet(this->m.hashes, 0, sizeof(uint32_t) * this->m.size);
 	}
 	else
 		delete(this);

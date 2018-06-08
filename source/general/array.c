@@ -77,7 +77,6 @@ classMethodDecl_(*const create)
         this->m.base = BX_ALLOC(getDefaultAllocator(), this->m.size * sizeof_type[this->m.type]);
         
         assert(this->m.base != NULL);
-        memSet(this->m.base, 0, this->m.size * sizeof_type[this->m.type]);
     }
     else
         delete(this);
